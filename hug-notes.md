@@ -115,8 +115,7 @@ cd /local/kruus/hug/transformers
   echo ""
 } 2>&1 | tee env-dsm-cpu.log  # this log will end up in /local/kruus/hug/transformers/
 ```
-oh -- conda biopython (CONFLICT w/ python-3.12?) numpy (NO numpy-base conflict?)
-and
+# oh -- conda biopython (CONFLICT w/ python-3.12?) numpy (NO numpy-base conflict?)
 ```
 # TBD...
 { conda deactivate; conda activate
