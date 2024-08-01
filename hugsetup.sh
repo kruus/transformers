@@ -50,6 +50,19 @@ git remote -v
 git branch -v
 
 echo ""
+echo "Acquiring DSMBind/data.zip ..."
+if ping -c 1 snake10 > /dev/null; then
+    echo "scp DSMBind data.zip from snake10"
+    scp snake10:/datasets/data/data-DSMBind-zenodo-10402853.zip ./data.zip
+else
+    echo "downloading DSMBind 1.2 Gb data.zip from zenodo ..."
+    wget -nd https://zenodo.org/records/10402853/data.zip?download=1
+fi
+if [ -f "data.zip" ]; then
+    unzip data.zip
+fi
+
+echo ""
 cd "${root}"
 if [ ! -d "${root}/hug/DSMBind-ejk" ]; then
     echo "# create DSMBind-ejk/ for branch 'ejk' runnable, small test"
