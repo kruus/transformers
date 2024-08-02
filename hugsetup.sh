@@ -9,6 +9,9 @@ else
 fi
 
 test -d "${root}" || { echo "OHOH: please set 'root' properly (was ${root})"; false; }
+GITHUB=https://github.com/kruus
+GITLAB=https://nj-gitlab.nec-labs.com/kruus
+
 
 if [ ! -d "${root}/hug" ]; then
     # populate 'hug' directory
@@ -24,7 +27,7 @@ fi
 echo ""
 if [ ! -d "${root}/hug/transformers" ]; then
 	cd "${root}/hug"
-	git clone https://github.com/kruus/transformers.git
+	git clone $GITHUB/transformers.git
 	cd transformers && git remote add upstream https://github.com/huggingface/transoformers.git
 fi
 
@@ -38,7 +41,7 @@ if [ ! -d "${root}/hug/DSMBind" ]; then
     echo "# create ${root}/DSMBind/ for branch 'hug' development"
     ls -l hug
 	cd "${root}/hug"
-	git clone https://github.com/kruus/DSMBind.git
+	git clone $GITLAB/DSMBind.git
 	cd DSMBind
 	git switch hug
 	git branch --set-upstream-to hug
@@ -68,7 +71,7 @@ if [ ! -d "${root}/hug/DSMBind-ejk" ]; then
     echo "# create DSMBind-ejk/ for branch 'ejk' runnable, small test"
     ls -l hug
 	cd "${root}/hug"
-	git clone https://github.com/kruus/DSMBind.git DSMBind-ejk
+	git clone $GITLAB/DSMBind.git DSMBind-ejk
 	cd DSMBind-ejk
 	git switch ejk
 	git branch --set-upstream-to ejk
@@ -76,6 +79,25 @@ else
     echo "Good. ${root}/hug/DSMBind-ejk/ exists"
 fi
 cd "${root}/hug/DSMBind-ejk"
+pwd
+git remote -v
+git branch -v
+
+echo ""
+cd "${root}"
+if [ ! -d "${root}/hug/esm" ]; then
+    echo "# clone hug/esm from nj-gitlab"
+    ls -l hug
+	cd "${root}/hug"
+	git clone $GITLAB/esm.git
+	# cd esm
+	# git switch ejk
+	# git branch --set-upstream-to ejk
+else
+    echo "Good. ${root}/hug/DSMBind-ejk/ exists"
+fi
+cd "${root}/hug/esm"
+pwd
 git remote -v
 git branch -v
 

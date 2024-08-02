@@ -24,11 +24,12 @@ fi
 
 # set true to FORCE remove and recreate of various environments
 #    (set them false once they have run nicely)
-stage1=false
-stage2=false
-stage3=true
-stage4=true
-stage5=true
+stage1=false      # pyt pyt-cpu
+stage2=false      # hug hug-cpu
+stage3=false      # dsm-cpu
+stage4=false      # dsm
+stage5=false      # esm-pyt2
+stage6=true      # dsm0
 
 echo "Current envs:"
 conda env list
@@ -45,8 +46,8 @@ if $stage1; then
   # **Testing** Begin with "clean" base environments: pyt and pyt-cpu
   conda deactivate
   conda activate
-  if conda env list | grep -q '^pyt-cpu '; then conda env remove -y -n pyt-cpu; fi
-  if conda env list | grep -q '^pyt '; then conda env remove -y -n pyt; fi
+  if conda env list | grep -q '^pyt-cpu '; then conda remove -y -n pyt-cpu --all; fi
+  if conda env list | grep -q '^pyt '; then conda remove -y -n pyt --all; fi
   mamba create -y -n pyt-cpu --override-channels -c pytorch -c defaults \
     'python=3.11.*' pytorch torchvision torchaudio cpuonly \
     2>&1 | tee env-pyt-cpu.log
@@ -70,28 +71,30 @@ if $stage2; then
   # recreate basic envs: hug and hug-cpu
   { conda deactivate; conda activate
     echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
-    if conda env list | grep -q '^hug-cpu '; then conda env remove -y -n hug-cpu; fi
+    if conda env list | grep -q '^hug-cpu '; then conda remove -y -n hug-cpu --all; fi
     conda create -n hug-cpu --clone pyt-cpu;
     conda activate hug-cpu;
     # pip dill and evaluate proper versions not installable via conda
     # pip would reinstall codecarbon urllib3 fsspec accelerate (w/ same version)
     # pip would reinstall regex faiss-cpu (w/ newer version)
     # seaborn is 'extra', at this point
-    mamba install --override-channels -c conda-forge -y 'safetensors>=0.4.1' 'tqdm>=4.27' 'deepspeed>=0.9.3' 'pytest>=7.2.0,<8.0.0' 'pydantic' 'seaborn'
+    mamba install --override-channels -c conda-forge -y 'safetensors>=0.4.1' 'tqdm>=4.27' 'deepspeed>=0.9.3' 'pytest>=7.2.0,<8.0.0' 'pydantic' 'seaborn' git git-lfs
     echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
     pip install -e '.[dev-torch,testing,quality,decord,deepspeed]';
+    pip install pre-commit black pylint
     echo "Created env hug-cpu"
     echo ""
   } 2>&1 | tee env-hug-cpu.log
   { conda deactivate; conda activate
     echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
-    if conda env list | grep -q '^hug '; then conda env remove -y -n hug; fi
+    if conda env list | grep -q '^hug '; then conda remove -y -n hug --all; fi
     if $gpu; then
       conda create -n hug --clone pyt
       conda activate hug;
-      mamba install --override-channels -c conda-forge -y 'safetensors>=0.4.1' 'tqdm>=4.27' 'deepspeed>=0.9.3' 'pytest>=7.2.0,<8.0.0' 'pydantic' 'seaborn'
+      mamba install --override-channels -c conda-forge -y 'safetensors>=0.4.1' 'tqdm>=4.27' 'deepspeed>=0.9.3' 'pytest>=7.2.0,<8.0.0' 'pydantic' 'seaborn' git git-lfs
       echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
       pip install -e '.[dev-torch,testing,quality,decord,deepspeed]';
+      pip install pre-commit black pylint
       echo "Created env hug"
       echo ""
     fi
@@ -110,18 +113,17 @@ if ! conda env list | grep -q '^dsm-cpu '; then stage3=true; fi
 #
 # install all, but w/ python<3.12
 # numpy: pip will later replace w/ 1.23.5, but 1.23.5 is not installable by conda
-#    this is from pip install of biopython==1.79, which is "required" by  DSMBind 'extra requirements
 #    sru change 3.0.0.dev6 to 3.0.0.dev DID NOT WORK (from sru import SRUpp failed)
 # ohoh. conda chemprop-2.0.4 has 'No module named chemprop.features'
 #       chemprop.features is in chemprop-1.7.1  (features/ --> featurizers in >=2.0.0)
 dsm_conda_pkgs="python<3.12.0a0 biopython ipython jupyterlab ipywidgets ipykernel conda-forge::nb_conda_kernels conda-forge::scikit-learn conda-forge::rdkit conda-forge::chemprop<2 conda-forge::biotite tqdm configparser"
 dsm_pip_pkgs="git+https://github.com/NVIDIA/dllogger.git biopython==1.79 sru==3.0.0.dev6 git+https://github.com/jonathanking/sidechainnet/ openmm"
-# pip:
+# pip: worst throwback might be sidechainnet -> ProDy -> numpy-1.23.5
 # dllogger          OK
 # biopython-1.79    OK
 # sru=3.0.0.dev     ninja-1.11.1.1 fsspec-2024.6.1
 # sidechainnet      ProDy>=2.0 (2.4.1), scipy-1.14.0, tqdm-4.66.4, py3Dmol-2.2.1, pandas-2.2.2, numpy-1.23.5
-#   ProDy           pyparsing-3.1.2
+#   ProDy           pyparsing-3.1.2, *** numpy-1.23.5 *** see https://github.com/prody/ProDy/issues/1915
 #   pandas          python-dateutil>=2.8.2 (2.9.0), pytz>=2020.1 (2024.1), tzdata>=2022.7 (2024.1)
 #   python-dateutil six>=1.5 (1.16.0
 #
@@ -137,9 +139,7 @@ if $stage3; then
   # recreate basic envs: dsm and dsm-cpu
   { conda deactivate; conda activate
     echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
-    if conda env list | grep -q '^dsm-cpu '; then
-      conda env remove -y -n dsm-cpu
-    fi
+    if conda env list | grep -q '^dsm-cpu '; then conda remove -y -n dsm-cpu --all; fi
     conda create -n dsm-cpu --clone pyt-cpu
     conda activate dsm-cpu;
     echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
@@ -190,7 +190,7 @@ if $stage4; then
     # TBD...
     { conda deactivate; conda activate
       echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
-      if conda env list | grep -q '^dsm '; then conda env remove -y -n dsm; fi
+      if conda env list | grep -q '^dsm '; then conda remove -y -n dsm --all; fi
       conda create -n dsm --clone pyt
       conda activate dsm
       echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
@@ -218,9 +218,9 @@ if $stage4; then
         set +x
       done
       # for some reason I ended up having "lost" seaborn !
-      set -x
+      echo ""
+      echo 'mamba install -y --override-channels -c pytorch -c nvidia -c conda-forge -y seaborn'
       mamba install -y --override-channels -c pytorch -c nvidia -c conda-forge -y seaborn
-      set +x
       echo ""
       echo "Now for DSMBind/ ... OH.  it is not a pip project at all"
       #    ( cd ../DSMBind && pip install -e . )
@@ -231,8 +231,83 @@ if $stage4; then
     echo ""
   fi
 fi
+cd $root
+conda env list
 
-echo "stage5: TBD create / recreate environments for DSMBind-ejk (python-3.9, facebook esm)"
+echo ""
+echo "stage5: create / recreate environments for facebook ESMfold, for hug/esm/"
+if ! $gpu; then
+  echo "stage5 skipped -- no GPU"
+else
+  if ! conda env list | grep -q '^esm-pyt2 '; then stage5=true; fi
+  if [ ! -f "${root}/hug/esm/env-pyt2.yml" ]; then
+    echo "stage5 skipped -- missing ${root}/hug/esm/env-pyt2.yml file for esm-pyt2 environment"
+    stage5=false
+  fi
+fi
+echo ""
+if $stage5; then
+  { echo "stage5: create / recreate env esm-pyt2"
+    conda deactivate; conda activate
+    echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
+    if conda env list | grep -q '^esm-pyt2 '; then conda remove -y -n esm-pyt2 --all; fi
+    mamba env create --file "${root}/hug/esm/env-pyt2.yml"   # from scratch, since python=3.9
+    conda activate esm-pyt2
+    if [ x"$CONDA_DEFAULT_ENV" = x"esm-pyt2" ]; then
+      if [ -d hug/esm ]; then
+        echo ""
+        echo "pip install hug/esm in development mode"
+        echo ""
+        cd hug/esm
+        pip install -e .
+        # esm is now my copy from nj-gitlab, so run a quick test ...
+        cd demo
+        time python demo-esmfold.py 2>&1 | tee demo-esmfold-env-esm-pyt2.log
+        echo ""
+        echo "*** End env esm-pyt2 demo-esmfold.py test ***"
+        echo ""
+      fi
+    fi
+  } 2>&1 | tee env-esm-pyt2.log
+fi
+cd $root
+
+echo ""
+echo "stage6: create / recreate env dsm-ejk for DSMBind-ejk/ (python-3.9, facebook esm)"
+if ! conda env list | grep -q '^dsm-ejk '; then stage6=true; fi
+if ! $gpu; then
+  echo "stage6 skipped -- no GPU"
+  stage6=false
+elif ! conda env list | grep -q '^esm-pyt2 '; then
+  echo "stage6 skipped -- missing stage5 env esm-pyt2"
+  stage6=false
+fi
+echo ""
+if $stage6; then
+  { echo "stage6: create / recreate env dsm-ejk"
+    echo " patterned after hug/DSMBind-ejk/env.sh"
+    conda deactivate; conda activate
+    echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
+    if conda env list | grep -q '^dsm-ejk '; then conda remove -y -n dsm --all; fi
+    conda create -n dsm-ejk --clone esm-pyt2
+    conda activate dsm-ejk
+    echo "CONDA_DEFAULT_ENV = $CONDA_DEFAULT_ENV"
+    if [ x"$CONDA_DEFAULT_ENV" = x"dsm-ejk" ]; then
+      echo "conda remove -y fairscale ..."
+      conda remove -y -n dsm-ejk fairscale
+      echo "mamba adjustments ..."
+      # This one seems to take a long time to resolve.  Are nvidia and pytorch channels contributing?
+      echo "mamba install --override-channels -c nvidia -c pytorch -c conda-forge -c bioconda -y"
+      echo "      biopython==1.79 numpy==1.23.5 ipython jupyterlab ipywidgets ipykernel"
+      echo "      conda-forge::nb_conda_kernels conda-forge::scikit-learn conda-forge::rdkit"
+      echo "      conda-forge::chemprop"
+      mamba install --override-channels -c nvidia -c pytorch -c conda-forge -c bioconda -y biopython==1.79 numpy==1.23.5 ipython jupyterlab ipywidgets ipykernel conda-forge::nb_conda_kernels conda-forge::scikit-learn conda-forge::rdkit conda-forge::chemprop
+      # These ADD to esm-pyt2 pip installs of dllogger, flash-attention, and openfold
+      echo 'pip install sru==3.0.0.dev  git+https://github.com/jonathanking/sidechainnet/ ...'
+      pip install 'sru==3.0.0.dev6' 'git+https://github.com/jonathanking/sidechainnet/'
+    fi
+  } 2>&1 | tee env-dsm-ejk.log
+fi
+cd $root
 
 # TBD: test for env dsm existing
-
