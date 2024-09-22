@@ -24,12 +24,31 @@ fi
 
 # set true to FORCE remove and recreate of various environments
 #    (set them false once they have run nicely)
-stage1=false      # pyt pyt-cpu
-stage2=false      # hug hug-cpu
-stage3=false      # dsm-cpu
-stage4=false      # dsm
-stage5=false      # esm-pyt2
-stage6=true      # dsm0
+if true; then
+  echo "# only create an environment if it is absent"
+  stage1=false      # pyt pyt-cpu
+  stage2=false      # hug hug-cpu
+  stage3=false      # dsm-cpu
+  stage4=false      # dsm
+  stage5=false      # esm-pyt2
+  stage6=false      # dsm-ejk
+else
+  echo "# DANGER: Remove and recreate all environments"
+  env=dsm-ejk;  echo "remove ${env} ..."; conda remove -y -n $env --all || true
+  env=esm-pyt2; echo "remove ${env} ..."; conda remove -y -n $env --all || true
+  env=dsm;      echo "remove ${env} ..."; conda remove -y -n $env --all || true
+  env=dsm-cpu;  echo "remove ${env} ..."; conda remove -y -n $env --all || true
+  env=hug;      echo "remove ${env} ..."; conda remove -y -n $env --all || true
+  env=hug-cpu;  echo "remove ${env} ..."; conda remove -y -n $env --all || true
+  env=pyt;      echo "remove ${env} ..."; conda remove -y -n $env --all || true
+  env=pyt-cpu;  echo "remove ${env} ..."; conda remove -y -n $env --all || true
+  stage1=true      # pyt pyt-cpu
+  stage2=true      # hug hug-cpu
+  stage3=true      # dsm-cpu
+  stage4=true      # dsm
+  stage5=true      # esm-pyt2
+  stage6=true      # dsm-ejk
+fi
 
 echo "Current envs:"
 conda env list
@@ -301,7 +320,7 @@ if $stage6; then
       echo "      biopython==1.79 numpy==1.23.5 ipython jupyterlab ipywidgets ipykernel"
       echo "      conda-forge::nb_conda_kernels conda-forge::scikit-learn conda-forge::rdkit"
       echo "      conda-forge::chemprop"
-      mamba install --override-channels -c nvidia -c pytorch -c conda-forge -c bioconda -y biopython==1.79 numpy==1.23.5 ipython jupyterlab ipywidgets ipykernel conda-forge::nb_conda_kernels conda-forge::scikit-learn conda-forge::rdkit conda-forge::chemprop
+      mamba install --override-channels -c nvidia -c pytorch -c conda-forge -c bioconda -y biopython==1.79 numpy==1.23.5 ipython jupyterlab ipywidgets ipykernel conda-forge::nb_conda_kernels conda-forge::scikit-learn conda-forge::rdkit conda-forge::chemprop scikit-learn
       # These ADD to esm-pyt2 pip installs of dllogger, flash-attention, and openfold
       echo 'pip install sru==3.0.0.dev  git+https://github.com/jonathanking/sidechainnet/ ...'
       pip install 'sru==3.0.0.dev6' 'git+https://github.com/jonathanking/sidechainnet/'
